@@ -94,6 +94,7 @@
   .axis line{stroke:#c9c5ba}
   .grid line{stroke:#ebe8e0}
   .barlbl{font-weight:700;font-size:15px;fill:#fff;pointer-events:none}
+  .qtylbl{font-family:var(--mono)!important;font-size:12px;font-weight:500;pointer-events:none}
   .pricelbl{font-family:var(--mono)!important;font-size:12px;fill:var(--ink)}
   .legend{display:flex;gap:18px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
   .legend span::before{content:"";display:inline-block;width:18px;height:10px;margin-right:6px;vertical-align:0;border-radius:2px;background:var(--c)}
@@ -272,7 +273,7 @@
       <div class="steps" id="stepbar"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="caption" id="cap">Premi «Avanti» per aprire le buste</div>
       <div class="subcap" id="subcap">&nbsp;</div>
-      <svg id="chart" viewBox="0 0 1000 600" aria-label="Curve di domanda e offerta e prezzo di equilibrio"></svg>
+      <svg id="chart" viewBox="0 0 1000 630" aria-label="Curve di domanda e offerta e prezzo di equilibrio"></svg>
       <div class="legend"><span style="--c:#9aa0ab">Offerte di vendita (barre)</span><span class="ln" style="--c:#1d2330">Offerte di acquisto (gradini)</span><span class="ln" style="--c:#c2185b">Prezzo di equilibrio</span></div>
       <div class="controls">
         <button class="btn" id="next">Avanti ▶</button>
@@ -317,7 +318,7 @@ const PRESET1 = {
     {id:"X", name:"Grossista",            desc:"Rivende l'energia ai suoi clienti a 180 €/MWh.", side:"buy", human:true, cap:100, val:180, autoP:null, color:"#7c3aed"},
     {id:"Y", name:"Industria",            desc:"Sopra 130 €/MWh conviene fermare la produzione.", side:"buy", human:true, cap:80, val:130, autoP:null, color:"#0f766e"},
     {id:"B", name:"Idroelettrico",        desc:"",  side:"sell", human:false, cap:80,  val:10,  autoP:10,   color:"#2f6fd6"},
-    {id:"D", name:"Turbogas di punta",    desc:"",  side:"sell", human:false, cap:100, val:160, autoP:160,  color:"#d23c3c"},
+    {id:"D", name:"Turbogas",             desc:"",  side:"sell", human:false, cap:100, val:160, autoP:160,  color:"#d23c3c"},
     {id:"H", name:"Clienti domestici",    desc:"",  side:"buy",  human:false, cap:150, val:0,   autoP:null, color:"#57534e"},
   ]
 };
@@ -552,7 +553,7 @@ function clearing(){
 
 /* ================= grafico ================= */
 const NS = "http://www.w3.org/2000/svg";
-const W = 1000, H = 600, M = {l:72, r:30, t:40, b:96};
+const W = 1000, H = 630, M = {l:72, r:30, t:40, b:126};
 let X, Y, yMax, TOP, L = {};
 function el(tag, attrs={}, parent){
   const e = document.createElementNS(NS, tag);
@@ -609,8 +610,8 @@ function buildChart(){
   if (S.forecast > 0){
     const a = X(Math.max(0, S.forecast - S.fcErr)), b = X(S.forecast + S.fcErr), xf = X(S.forecast);
     if (S.fcErr > 0) el("rect", {x:a, y:TOP, width:b-a, height:Y(0)-TOP, fill:"#1d4ed8", opacity:.08}, L.fc);
-    el("line", {x1:xf, x2:xf, y1:TOP, y2:Y(0)+50, stroke:"#1d4ed8", "stroke-width":2, "stroke-dasharray":"2 5"}, L.fc);
-    el("text", {x:xf, y:Y(0)+66, "text-anchor":"middle", "font-size":13, "font-weight":700, fill:"#1d4ed8"}, L.fc)
+    el("line", {x1:xf, x2:xf, y1:TOP, y2:Y(0)+70, stroke:"#1d4ed8", "stroke-width":2, "stroke-dasharray":"2 5"}, L.fc);
+    el("text", {x:xf, y:Y(0)+86, "text-anchor":"middle", "font-size":13, "font-weight":700, fill:"#1d4ed8"}, L.fc)
       .textContent = `Fabbisogno stimato ${fmt(S.forecast)}${S.fcErr > 0 ? " ± " + fmt(S.fcErr) : ""} MWh`;
   }
   // vendite, in ordine di arrivo
@@ -621,11 +622,23 @@ function buildChart(){
     o.grp = el("g", {}, L.bars);
     o.h = Math.max(3, Y(0) - Y(b.p));
     o.rect = el("rect", {x:X(o.xin), y:Y(0), width:Math.max(1, X(b.q)-X(0)-2), height:0, fill:r.color, rx:3}, o.grp);
-    o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:Y(0)-8, opacity:0}, o.grp);
+    const bw = X(b.q) - X(0);
+    o.tall = o.h >= 46;                       // etichette dentro la barra (bianche) o sopra (scure)
+    const cx = X(o.xin + b.q/2);
+    if (o.tall){
+      o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:cx, y:Y(0)-24, opacity:0}, o.grp);
+      o.ql  = el("text", {class:"qtylbl", "text-anchor":"middle", x:cx, y:Y(0)-8, opacity:0, fill:"#fff"}, o.grp);
+      o.pl  = el("text", {class:"pricelbl", "text-anchor":"middle", x:cx, y:Y(b.p)-7, opacity:0}, o.grp);
+    } else {
+      o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:cx, y:Y(b.p)-36, opacity:0, fill:r.color, style:"fill:" + r.color}, o.grp);
+      o.ql  = el("text", {class:"qtylbl", "text-anchor":"middle", x:cx, y:Y(b.p)-21, opacity:0, fill:"#1d2330"}, o.grp);
+      o.pl  = el("text", {class:"pricelbl", "text-anchor":"middle", x:cx, y:Y(b.p)-7, opacity:0}, o.grp);
+    }
     o.lbl.textContent = r.id;
-    o.pl = el("text", {class:"pricelbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:Y(b.p)-7, opacity:0}, o.grp);
-    o.pl.textContent = fmt(b.p);
-    o.wide = X(b.q) - X(0) > 30;
+    o.qtxt = q => bw >= 54 ? `${fmt(q)} MWh` : bw >= 22 ? fmt(q) : "";
+    o.ql.textContent = o.qtxt(b.q);
+    o.pl.textContent = bw >= 34 ? `${fmt(b.p)} €` : fmt(b.p);
+    o.wide = bw > 20;
     return o;
   });
   // acquisti, in ordine di arrivo
@@ -636,13 +649,15 @@ function buildChart(){
     o.grp = el("g", {opacity:0}, L.dem);
     o.line = el("line", {x1:X(o.xin)+2, x2:X(o.xin+b.q)-2, y1:y, y2:y, stroke:r.color, "stroke-width":7, "stroke-linecap":"round"}, o.grp);
     o.lbl = el("text", {"text-anchor":"middle", x:X(o.xin + b.q/2), y:y-10, "font-weight":700, "font-size":14, fill:r.color}, o.grp);
-    o.lbl.textContent = `${r.id} · ${pTxt(b.p)}`;
+    o.lbl.textContent = `${r.id} · ${b.p === null ? "max" : fmt(b.p) + " €"}`;
+    o.ql = el("text", {class:"qtylbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:y+20, fill:r.color}, o.grp);
+    o.ql.textContent = `${fmt(b.q)} MWh`;
     return o;
   });
 }
 function moveDem(o, x){
   o.line.setAttribute("x1", X(x)+2); o.line.setAttribute("x2", X(x+o.b.q)-2);
-  o.lbl.setAttribute("x", X(x + o.b.q/2));
+  o.lbl.setAttribute("x", X(x + o.b.q/2)); o.ql.setAttribute("x", X(x + o.b.q/2));
 }
 
 const STEPS = [
@@ -663,6 +678,7 @@ async function step0(){
     await wait(i * 140);
     await tween(550, t => { o.rect.setAttribute("height", o.h*t); o.rect.setAttribute("y", Y(0) - o.h*t); });
     if (o.wide) o.lbl.setAttribute("opacity", 1);
+    o.ql.setAttribute("opacity", 1);
     o.pl.setAttribute("opacity", 1);
   }));
 }
@@ -672,7 +688,7 @@ async function step1(){
     const a = o.xin, b = o.b.x0, q = o.b.q;
     await tween(900, t => {
       const x = lerp(a, b, t);
-      o.rect.setAttribute("x", X(x)); o.lbl.setAttribute("x", X(x + q/2)); o.pl.setAttribute("x", X(x + q/2));
+      o.rect.setAttribute("x", X(x)); [o.lbl, o.ql, o.pl].forEach(t => t.setAttribute("x", X(x + q/2)));
     });
   }));
 }
@@ -713,13 +729,21 @@ async function step3(){
   // escluse e parti non accettate
   R.sIn.forEach(o => {
     if (o.b.acc === 0){ o.grp.style.transition = "opacity .6s"; o.grp.style.opacity = .2; }
-    else if (o.b.acc < o.b.q) el("rect", {x:X(o.b.x0 + o.b.acc), y:Y(o.b.p), width:X(o.b.q - o.b.acc) - X(0), height:o.h, fill:"#fff", opacity:.72}, o.grp);
+    else if (o.b.acc < o.b.q){
+      const ov = el("rect", {x:X(o.b.x0 + o.b.acc), y:Y(o.b.p), width:X(o.b.q - o.b.acc) - X(0), height:o.h, fill:"#fff", opacity:.72}, o.grp);
+      o.grp.insertBefore(ov, o.lbl);
+      const bw = X(o.b.q) - X(0);
+      o.ql.textContent = bw >= 70 ? `${fmt(o.b.acc)} di ${fmt(o.b.q)} MWh` : bw >= 22 ? `${fmt(o.b.acc)}/${fmt(o.b.q)}` : "";
+      if (o.tall) o.ql.setAttribute("fill", "#1d2330");
+      o.ql.setAttribute("font-weight", 700);
+    }
   });
   R.dIn.forEach(o => {
     if (o.b.acc === 0){ o.grp.style.transition = "opacity .6s"; o.grp.style.opacity = .25; o.line.setAttribute("stroke-dasharray", "4 8"); }
     else if (o.b.acc < o.b.q){
       const y = yOf(o.b.p);
       o.line.setAttribute("x2", X(o.b.x0 + o.b.acc) - 2);
+      o.ql.textContent = `${fmt(o.b.acc)} di ${fmt(o.b.q)} MWh`; o.ql.setAttribute("font-weight", 700);
       el("line", {x1:X(o.b.x0 + o.b.acc)+2, x2:X(o.b.x0 + o.b.q)-2, y1:y, y2:y, stroke:role(o.b.role).color, "stroke-width":7, "stroke-dasharray":"4 8", opacity:.4}, o.grp);
     }
   });
@@ -732,18 +756,17 @@ async function step3(){
   const xq = X(R.Q);
   const ql = el("line", {x1:xq, x2:xq, y1:Y(0), y2:Y(0), stroke:"#1d2330", "stroke-width":1.5, "stroke-dasharray":"5 5"}, L.over);
   await tween(500, t => ql.setAttribute("y1", lerp(Y(0), Y(R.price), t)));
-  // etichetta della quantità: pillola scura appoggiata all'asse delle ascisse
+  // etichetta della quantità: pillola scura sotto l'asse, centrata sulla quantità scambiata
   el("path", {d:`M ${xq-7} ${Y(0)+11} L ${xq+7} ${Y(0)+11} L ${xq} ${Y(0)+1} Z`, fill:"#1d2330"}, L.over);
   const qg = el("g", {opacity:0}, L.over);
-  const qr = el("rect", {y:Y(0)-46, height:28, rx:14, fill:"#1d2330"}, qg);
-  const qt = el("text", {y:Y(0)-26, "font-size":17, "font-weight":700, fill:"#fff"}, qg);
+  el("line", {x1:xq, x2:xq, y1:Y(0)+11, y2:Y(0)+30, stroke:"#1d2330", "stroke-width":2}, qg);
+  const qr = el("rect", {y:Y(0)+30, height:28, rx:14, fill:"#1d2330"}, qg);
+  const qt = el("text", {y:Y(0)+50, "font-size":17, "font-weight":700, fill:"#fff"}, qg);
   qt.textContent = `Q = ${fmt(R.Q)} MWh`;
   const qw = (qt.getComputedTextLength ? qt.getComputedTextLength() : 120) + 24;
-  const right = xq + 10 + qw < W - M.r;
-  const qx = right ? xq + 10 : xq - 10 - qw;
+  const qx = Math.max(M.l, Math.min(W - M.r - qw, xq - qw/2));
   qr.setAttribute("x", qx); qr.setAttribute("width", qw);
   qt.setAttribute("x", qx + 12);
-  el("line", {x1:right ? qx : qx + qw, x2:xq, y1:Y(0)-32, y2:Y(0)-32, stroke:"#1d2330", "stroke-width":2}, qg);
   await tween(350, t => qg.setAttribute("opacity", t));
   // linea di prezzo
   const yp = Y(R.price);
