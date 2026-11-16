@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Borsa elettrica – Gioco del MGP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f5f1; --panel:#ffffff; --ink:#1d2330; --muted:#677084; --line:#dcd9d0;
+    --accent:#1d4ed8; --price:#c2185b; --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+  header{display:flex;align-items:center;gap:24px;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em}
+  header h1 span{color:var(--muted);font-weight:500}
+  nav{display:flex;gap:4px;margin-left:auto}
+  nav button{border:0;background:transparent;font:inherit;font-weight:600;font-size:15px;padding:9px 16px;border-radius:8px;color:var(--muted);cursor:pointer}
+  nav button.active{background:var(--ink);color:#fff}
+  .icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;font-size:14px}
+  main{padding:24px 28px 40px;max-width:1440px;margin:0 auto}
+  .view{display:none}
+  .view.active{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  h2{font-size:28px;margin:0 0 6px;letter-spacing:-.02em}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+  p.lead{font-size:19px;color:var(--muted);margin:0 0 20px}
+  .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:600;font-size:15px;cursor:pointer;background:var(--ink);color:#fff}
+  .btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.accent{background:var(--accent)}
+  .btn.small{padding:7px 12px;font-size:14px}
+  .btn:disabled{opacity:.4;cursor:default}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* Consegna */
+  .brief{display:grid;grid-template-columns:1fr 1.15fr;gap:22px}
+  .roles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+  .role{border-radius:12px;padding:14px 16px;color:#fff;position:relative;min-height:128px}
+  .role .id{font-size:38px;font-weight:700;line-height:1;position:absolute;right:14px;top:10px;opacity:.35}
+  .role .nm{font-size:19px;font-weight:700;padding-right:36px}
+  .role .ds{font-size:14px;opacity:.9;margin-top:2px}
+  .role .kv{margin-top:10px;font-size:14px;display:flex;gap:18px}
+  .role .kv b{font-family:var(--mono);font-size:19px}
+  .role .secret.hidden b{filter:blur(7px)}
+  .auto{font-size:15px;line-height:1.7;background:#f1efe9;border-radius:12px;padding:12px 16px}
+  .auto .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:0}
+  .fact{background:#f1efe9;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:inline-block}
+  .fact small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  .fact b{font-size:26px;font-family:var(--mono)}
+  ol.rules{font-size:17px;line-height:1.5;padding-left:22px;margin:0}
+  ol.rules li{margin-bottom:7px}
+  code.fmt{font-family:var(--mono);background:#eef2ff;color:#1e3a8a;padding:2px 7px;border-radius:6px;font-size:.92em;white-space:nowrap}
+  details.settings{margin-top:22px}
+  details.settings summary{cursor:pointer;font-weight:600;color:var(--muted)}
+  table{border-collapse:collapse;width:100%}
+  th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  td input,td select{font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px 6px;width:100%;background:#fff}
+  td input[type=number]{width:84px;font-family:var(--mono)}
+  td input.idin{width:44px;font-weight:700;text-align:center}
+  td input[type=color]{width:38px;padding:1px;height:30px}
+  .num{font-family:var(--mono);text-align:right}
+  .sub{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
+
+  /* Offerte */
+  .offers{display:grid;grid-template-columns:1fr 1.15fr;gap:22px}
+  textarea{width:100%;min-height:280px;font-family:var(--mono);font-size:15px;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical;background:#fcfcfa}
+  .help{font-size:14px;color:var(--muted);line-height:1.5;margin:10px 0 14px}
+  .tag{display:inline-block;min-width:26px;height:26px;padding:0 4px;border-radius:7px;color:#fff;font-weight:700;text-align:center;line-height:26px;font-size:14px}
+  .side-s{color:#0f5132;font-weight:600;font-size:12px}
+  .side-b{color:#5b21b6;font-weight:600;font-size:12px}
+  .msg{font-size:13px}
+  .msg.err{color:var(--err)} .msg.warn{color:var(--warn)} .msg.ok{color:var(--ok)} .msg.mut{color:var(--muted)}
+  .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px}
+  tr.autorow td{color:var(--muted);background:#faf9f6}
+  .capbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+  .cap{font-size:13px;padding:5px 9px;border-radius:8px;background:#f1efe9}
+  .cap.over{background:#fee2e2;color:var(--err);font-weight:600}
+
+  /* Asta */
+  .stage{display:grid;grid-template-columns:1fr 360px;gap:22px}
+  .caption{font-size:24px;font-weight:700;letter-spacing:-.01em;min-height:34px;margin-bottom:4px}
+  .subcap{font-size:16px;color:var(--muted);min-height:24px;margin-bottom:10px}
+  .steps{display:flex;gap:6px;margin-bottom:12px}
+  .steps i{flex:1;height:5px;border-radius:3px;background:var(--line)}
+  .steps i.on{background:var(--ink)}
+  svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--sans)}
+  .axis text{font-family:var(--mono);font-size:13px;fill:var(--muted)}
+  .axis line{stroke:#c9c5ba}
+  .grid line{stroke:#ebe8e0}
+  .barlbl{font-weight:700;font-size:15px;fill:#fff;pointer-events:none}
+  .pricelbl{font-family:var(--mono)!important;font-size:12px;fill:var(--ink)}
+  .legend{display:flex;gap:18px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+  .legend span::before{content:"";display:inline-block;width:18px;height:10px;margin-right:6px;vertical-align:0;border-radius:2px;background:var(--c)}
+  .legend span.ln::before{height:4px;vertical-align:3px}
+  .side .bigprice{font-family:var(--mono);font-size:50px;font-weight:500;color:var(--price);line-height:1}
+  .side .bigprice small{font-size:17px;color:var(--muted)}
+  .side .label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+  .qty{font-size:15px;margin-top:8px;color:var(--muted)} .qty b{font-family:var(--mono);color:var(--ink)}
+  .res td{font-size:14px}
+  .res tr.autor td{color:var(--muted);font-style:italic}
+  .res tr.grp td{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding-top:12px;font-style:normal}
+  .fadein{animation:fi .5s ease both}
+  @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .controls{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .kbd{font-size:12px;color:var(--muted);margin-left:auto;align-self:center}
+  .history{margin-top:18px}
+  .history .h{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .history .h b{font-family:var(--mono);color:var(--price);white-space:nowrap}
+  .pab{margin-top:14px;font-size:14px;background:#f1efe9;border-radius:10px;padding:12px 14px;line-height:1.5;display:none}
+  .shortage{color:var(--err);font-weight:600;font-size:14px;margin-top:8px}
+  /* Live / giocatori */
+  .live{border:2px solid #1d4ed8;border-radius:14px;padding:16px 18px;margin-bottom:18px;background:#f5f8ff}
+  .live h3{color:#1d4ed8}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700}
+  .badge.open{background:#dcfce7;color:#166534} .badge.closed{background:#fee2e2;color:#991b1b} .badge.idle{background:#e5e7eb;color:#374151}
+  .lv{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #dbe4ff;font-size:14px}
+  .lv .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lv .off{font-family:var(--mono);font-size:13px}
+  .join{display:flex;gap:16px;align-items:center;margin-top:18px;padding:14px;border-radius:12px;background:#f5f8ff;border:1px dashed #1d4ed8}
+  .join .qr{width:132px;height:132px;flex:none;background:#fff;padding:6px;border-radius:8px}
+  .join .qr img,.join .qr canvas{width:120px!important;height:120px!important}
+  .join .url{font-family:var(--mono);font-size:13px;word-break:break-all;color:#1e3a8a}
+  details.alt summary{cursor:pointer;font-weight:600;color:var(--muted);margin-bottom:10px}
+  body.player header nav, body.player #fs{display:none}
+  .pwrap{max-width:560px;margin:0 auto}
+  .pwrap .card{margin-bottom:14px}
+  .pbig{font-size:22px;font-weight:700;margin:0 0 6px}
+  .pmuted{color:var(--muted);font-size:15px;line-height:1.45}
+  .rolepick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .rolepick button{border:0;border-radius:12px;padding:16px 12px;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer;text-align:left;min-height:84px}
+  .rolepick button small{display:block;font-weight:500;font-size:13px;opacity:.9;margin-top:4px}
+  .offer{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border-radius:10px;background:#f6f5f1;margin-bottom:10px}
+  .offer label{font-size:13px;color:var(--muted);display:block}
+  .offer input[type=number]{width:100%;font:inherit;font-family:var(--mono);font-size:20px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-top:4px}
+  .offer .np{grid-column:1/-1;font-size:14px}
+  .bigbtn{width:100%;padding:16px;font-size:18px}
+  .sent{background:#dcfce7;color:#166534;border-radius:12px;padding:14px 16px;font-weight:600;margin-top:12px}
+  .perr{color:var(--err);font-size:14px;margin-top:10px}
+  @media (max-width:1050px){.brief,.offers,.stage{grid-template-columns:1fr}}
+  @media (max-width:640px){.roles{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Borsa elettrica <span>· MGP, ora 20:00 di domani</span></h1>
+  <nav>
+    <button data-v="brief" class="active">1 · Consegna</button>
+    <button data-v="offers">2 · Offerte</button>
+    <button data-v="auction">3 · Asta</button>
+  </nav>
+  <button class="icon-btn" id="fs" title="Schermo intero">⛶</button>
+</header>
+
+<main>
+<!-- ============ CONSEGNA ============ -->
+<section class="view active" id="v-brief">
+  <div class="brief">
+    <div class="card">
+      <h2>Domani alle 20:00 si scambia energia</h2>
+      <p class="lead">Il GME raccoglie le offerte di vendita e di acquisto e fissa un unico prezzo per l'ora.</p>
+      <div class="row" style="gap:12px;align-items:stretch"><div class="fact"><small>Fabbisogno stimato</small><b id="f-fc">300</b> MWh <span id="f-fce" style="color:var(--muted)"></span></div>
+      <div class="fact"><small>Prezzo tipico a quest'ora</small><b id="f-typ">110–130</b> €/MWh</div></div>
+      <ol class="rules">
+        <li><b>Produttori:</b> offrite quanti MWh vendere e il <b>prezzo minimo</b> che accettate.</li>
+        <li><b>Acquirenti:</b> offrite quanti MWh comprare e il <b>prezzo massimo</b> che pagate. Potete anche comprare <i>senza prezzo</i>, cioè a qualunque prezzo.</li>
+        <li>Ognuno può fare <b>fino a 2 offerte</b>, senza superare la propria capacità.</li>
+        <li>Chi viene accettato scambia al <b>prezzo di equilibrio</b>, uguale per tutti.<br>
+          Produttori: guadagno = (prezzo − costo) × MWh venduti.<br>
+          Acquirenti: guadagno = (valore − prezzo) × MWh comprati.</li>
+        <li>Su Wooclap scrivete <code class="fmt">C; 120; 140</code><br>
+          Due offerte: <code class="fmt">C; 60; 95 | C; 60; 140</code> · Senza prezzo: <code class="fmt">X; 50; max</code></li>
+      </ol>
+      <div class="join" id="joinbox" style="display:none">
+        <div class="qr" id="qr"></div>
+        <div>
+          <div style="font-weight:700;font-size:18px;margin-bottom:4px">Fate le offerte dal telefono</div>
+          <div class="url" id="joinurl"></div>
+          <button class="btn secondary small" id="copyjoin" style="margin-top:8px">Copia link</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h3 style="margin:0">I partecipanti</h3>
+        <label style="font-size:14px;color:var(--muted)"><input type="checkbox" id="showcost" checked> mostra costi e valori</label>
+      </div>
+      <div class="sub">Produttori</div>
+      <div class="roles" id="cards-sell"></div>
+      <div class="sub">Acquirenti</div>
+      <div class="roles" id="cards-buy"></div>
+      <div class="sub">Il resto del mercato · offerte automatiche</div>
+      <div class="auto" id="autolist"></div>
+      <details class="settings">
+        <summary>⚙ Impostazioni dello scenario</summary>
+        <div style="margin-top:12px">
+          <div class="row" style="margin-bottom:12px">
+            <button class="btn secondary small" id="preset1">Scenario 1 · vento normale</button>
+            <button class="btn secondary small" id="preset2">Scenario 2 · cala il vento</button>
+            <label style="margin-left:auto;font-size:14px">Fabbisogno stimato <input type="number" id="s-fc" style="width:80px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px"> ± <input type="number" id="s-fce" style="width:60px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px"> MWh</label>
+            <label style="font-size:14px">Prezzo tipico <input type="text" id="s-typ" style="width:100px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px"></label>
+          </div>
+          <div style="overflow-x:auto">
+          <table id="roletable">
+            <thead><tr><th>ID</th><th>Nome</th><th>Descrizione</th><th>Lato</th><th>Chi offre</th><th>MWh max</th><th>Costo / valore €</th><th>Prezzo auto €</th><th></th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          </div>
+          <div class="help">«Prezzo auto» è il prezzo dell'offerta automatica (ruoli gestiti dal computer). Lascialo vuoto per un acquisto senza prezzo. Per i produttori automatici, se è vuoto si usa il costo.</div>
+          <button class="btn secondary small" id="addrole">+ Ruolo</button>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OFFERTE ============ -->
+<section class="view" id="v-offers">
+  <div class="offers">
+    <div>
+    <div class="live" id="livebox">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0">Offerte live dai docenti</h3>
+        <span class="badge idle" id="lvstate">non collegato</span>
+      </div>
+      <div class="pmuted" id="lvhelp" style="font-size:14px">Collegamento in corso…</div>
+      <div id="lvlist" style="margin:8px 0"></div>
+      <div class="row" id="lvbtns"></div>
+    </div>
+    <div class="card">
+    <details class="alt" id="altbox"><summary>Piano B: incolla le risposte di Wooclap</summary>
+      <textarea id="raw" spellcheck="false" placeholder="A; 100; 0&#10;C; 60; 95 | C; 60; 140&#10;X; 50; max | X; 50; 170&#10;Y; 80; 120"></textarea>
+      <div class="help">
+        Una risposta per riga. Ogni offerta contiene <b>ruolo, MWh, €/MWh</b>, separati da punto e virgola, virgola o spazi. Più offerte sulla stessa riga si separano con <code class="fmt">|</code> o <code class="fmt">/</code>.
+        Per un acquisto senza prezzo scrivete <code class="fmt">max</code> al posto del prezzo. Funziona anche con le colonne esportate in Excel: vengono letti la lettera del ruolo e gli ultimi due numeri. Per i decimali usate il punto.
+      </div>
+      <div class="row">
+        <button class="btn accent" id="parse">Leggi le risposte</button>
+        <button class="btn secondary" id="example">Inserisci un esempio</button>
+        <button class="btn secondary" id="clear">Svuota</button>
+      </div>
+      <div id="parsemsg" class="msg" style="margin-top:10px"></div>
+    </details>
+    </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h3 style="margin:0">Offerte (<span id="nbids">0</span> dei docenti + automatiche)</h3>
+        <button class="btn secondary small" id="addbid">+ Offerta</button>
+      </div>
+      <table id="bidtable">
+        <thead><tr><th></th><th>Ruolo</th><th>Tipo</th><th class="num">MWh</th><th class="num">€/MWh</th><th>Controllo</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="capbar" id="capbar"></div>
+      <div class="row" style="margin-top:18px;justify-content:flex-end">
+        <button class="btn" id="go">Vai all'asta ▶</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ASTA ============ -->
+<section class="view" id="v-auction">
+  <div class="stage">
+    <div class="card">
+      <div class="steps" id="stepbar"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="caption" id="cap">Premi «Avanti» per aprire le buste</div>
+      <div class="subcap" id="subcap">&nbsp;</div>
+      <svg id="chart" viewBox="0 0 1000 600" aria-label="Curve di domanda e offerta e prezzo di equilibrio"></svg>
+      <div class="legend"><span style="--c:#9aa0ab">Offerte di vendita (barre)</span><span class="ln" style="--c:#1d2330">Offerte di acquisto (gradini)</span><span class="ln" style="--c:#c2185b">Prezzo di equilibrio</span></div>
+      <div class="controls">
+        <button class="btn" id="next">Avanti ▶</button>
+        <button class="btn secondary" id="play">Riproduci tutto</button>
+        <button class="btn secondary" id="restart">↺ Ricomincia</button>
+        <span class="kbd">Tasti: → avanti · R ricomincia</span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card">
+        <div class="label">Prezzo di equilibrio (PUN)</div>
+        <div class="bigprice" id="bigprice">—</div>
+        <div class="qty" id="qty"></div>
+        <div id="shortage"></div>
+        <div id="restable" style="margin-top:12px"></div>
+        <div class="pab" id="pab"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn secondary small" id="pabbtn" disabled>Confronta con pay-as-bid</button>
+          <button class="btn secondary small" id="save" disabled>Salva il round</button>
+        </div>
+        <div class="history" id="history"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GIOCATORE ============ -->
+<section class="view" id="v-play"><div class="pwrap" id="pwrap"></div></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+(() => {
+/* ================= scenario ================= */
+// side: "sell" | "buy"; human: true = offre un docente; val = costo (vendita) o valore (acquisto)
+// autoP: prezzo dell'offerta automatica (null = senza prezzo per acquisti, = costo per vendite)
+const PRESET1 = {
+  typical: "110–130", forecast: 300, fcErr: 20,
+  roles: [
+    {id:"A", name:"Eolico",               desc:"Il vento è gratis.",                         side:"sell", human:true,  cap:100, val:0,   autoP:null, color:"#2e9d5b"},
+    {id:"C", name:"Ciclo combinato a gas",desc:"Paga il gas che brucia.",                    side:"sell", human:true,  cap:120, val:90,  autoP:null, color:"#e08a1e"},
+    {id:"X", name:"Grossista",            desc:"Rivende l'energia ai suoi clienti a 180 €/MWh.", side:"buy", human:true, cap:100, val:180, autoP:null, color:"#7c3aed"},
+    {id:"Y", name:"Industria",            desc:"Sopra 130 €/MWh conviene fermare la produzione.", side:"buy", human:true, cap:80, val:130, autoP:null, color:"#0f766e"},
+    {id:"B", name:"Idroelettrico",        desc:"",  side:"sell", human:false, cap:80,  val:10,  autoP:10,   color:"#2f6fd6"},
+    {id:"D", name:"Turbogas di punta",    desc:"",  side:"sell", human:false, cap:100, val:160, autoP:160,  color:"#d23c3c"},
+    {id:"H", name:"Clienti domestici",    desc:"",  side:"buy",  human:false, cap:150, val:0,   autoP:null, color:"#57534e"},
+  ]
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+const S = { ...clone(PRESET1), bids: [], step: 0, busy: false, history: [], result: null };
+const $ = s => document.querySelector(s);
+const fmt = (n, d=0) => (Number(n) + 0 === 0 ? 0 : Number(n)).toLocaleString("it-IT", {minimumFractionDigits:d, maximumFractionDigits:d, useGrouping:"always"});
+const role = id => S.roles.find(r => r.id === id);
+const humans = () => S.roles.filter(r => r.human);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pTxt = p => p === null ? "max" : fmt(p);
+
+/* ================= navigazione ================= */
+function show(v){
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.v === v));
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "v-" + v));
+  if (v === "auction") resetAuction();
+  if (v === "offers") renderBids();
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+$("#fs").onclick = () => {
+  try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(()=>{}); } catch(e){}
+};
+
+/* ================= consegna ================= */
+function roleCard(r, showSecret){
+  const isS = r.side === "sell";
+  return `<div class="role" style="background:${r.color}">
+    <div class="id">${esc(r.id)}</div>
+    <div class="nm">${esc(r.name)}</div>
+    <div class="ds">${esc(r.desc)}</div>
+    <div class="kv"><span>${isS ? "Capacità" : "Fabbisogno max"}<br><b>${fmt(r.cap)}</b> MWh</span>
+    <span class="secret ${showSecret ? "" : "hidden"}">${isS ? "Costo" : "Valore"}<br><b>${fmt(r.val)}</b> €/MWh</span></div>
+  </div>`;
+}
+function autoP(r){ return r.side === "sell" ? (r.autoP ?? r.val) : r.autoP; }
+function renderBrief(){
+  $("#f-typ").textContent = S.typical;
+  $("#f-fc").textContent = fmt(S.forecast);
+  $("#f-fce").textContent = S.fcErr > 0 ? "± " + fmt(S.fcErr) : "";
+  $("#s-fc").value = S.forecast; $("#s-fce").value = S.fcErr;
+  const sc = $("#showcost").checked;
+  $("#cards-sell").innerHTML = humans().filter(r => r.side === "sell").map(r => roleCard(r, sc)).join("") || `<div class="msg mut">Nessuno</div>`;
+  $("#cards-buy").innerHTML  = humans().filter(r => r.side === "buy").map(r => roleCard(r, sc)).join("") || `<div class="msg mut">Nessuno</div>`;
+  const au = S.roles.filter(r => !r.human);
+  $("#autolist").innerHTML = au.length ? au.map(r => {
+    const p = autoP(r);
+    return `<div><span class="sw" style="background:${r.color}"></span><b>${esc(r.id)} · ${esc(r.name)}</b>: ${r.side === "sell" ? "vende" : "compra"} ${fmt(r.cap)} MWh ${p === null ? "<b>senza prezzo</b>" : (r.side === "sell" ? "a partire da " : "fino a ") + "<b>" + fmt(p) + " €/MWh</b>"}</div>`;
+  }).join("") : "Nessuna";
+  $("#s-typ").value = S.typical;
+  $("#roletable tbody").innerHTML = S.roles.map((r,i) => `
+    <tr>
+      <td><input class="idin" data-i="${i}" data-k="id" value="${esc(r.id)}" maxlength="3"></td>
+      <td><input data-i="${i}" data-k="name" value="${esc(r.name)}"></td>
+      <td><input data-i="${i}" data-k="desc" value="${esc(r.desc)}"></td>
+      <td><select data-i="${i}" data-k="side"><option value="sell" ${r.side==="sell"?"selected":""}>vende</option><option value="buy" ${r.side==="buy"?"selected":""}>compra</option></select></td>
+      <td><select data-i="${i}" data-k="human"><option value="1" ${r.human?"selected":""}>docente</option><option value="0" ${!r.human?"selected":""}>automatico</option></select></td>
+      <td><input type="number" data-i="${i}" data-k="cap" value="${r.cap}"></td>
+      <td><input type="number" data-i="${i}" data-k="val" value="${r.val}"></td>
+      <td><input type="number" data-i="${i}" data-k="autoP" value="${r.autoP ?? ""}" ${r.human ? "disabled" : ""} placeholder="${r.side==="buy" ? "max" : r.val}"></td>
+      <td><input type="color" data-i="${i}" data-k="color" value="${r.color}"></td>
+      <td><button class="del" data-delrole="${i}" title="Elimina ruolo">×</button></td>
+    </tr>`).join("");
+  $("#roletable tbody").querySelectorAll("input,select").forEach(inp => inp.onchange = () => {
+    const r = S.roles[+inp.dataset.i], k = inp.dataset.k, v = inp.value;
+    if (k === "human") r.human = v === "1";
+    else if (k === "cap" || k === "val") r[k] = Number(v) || 0;
+    else if (k === "autoP") r.autoP = v === "" ? null : Number(v);
+    else if (k === "id") { const nv = v.trim().toUpperCase(); if (nv && !S.roles.some(o => o !== r && o.id === nv)) { S.bids.forEach(b => { if (b.role === r.id) b.role = nv; }); r.id = nv; } }
+    else r[k] = v;
+    renderBrief();
+  });
+  $("#roletable tbody").querySelectorAll("[data-delrole]").forEach(b => b.onclick = () => { S.roles.splice(+b.dataset.delrole, 1); renderBrief(); });
+}
+$("#showcost").onchange = renderBrief;
+$("#s-typ").onchange = e => { S.typical = e.target.value; renderBrief(); };
+$("#s-fc").onchange = e => { S.forecast = Math.max(0, Number(e.target.value) || 0); renderBrief(); };
+$("#s-fce").onchange = e => { S.fcErr = Math.max(0, Number(e.target.value) || 0); renderBrief(); };
+$("#preset1").onclick = () => { const h = S.history; Object.assign(S, clone(PRESET1)); S.history = h; renderBrief(); };
+$("#preset2").onclick = () => {
+  const h = S.history; Object.assign(S, clone(PRESET1)); S.history = h;
+  const a = S.roles.find(r => r.id === "A"); a.cap = 20; a.desc = "Poco vento: solo 20 MWh disponibili.";
+  renderBrief();
+};
+$("#addrole").onclick = () => {
+  const used = new Set(S.roles.map(r => r.id));
+  const id = "EFGIJKLMNOPQRSTUVWZ".split("").find(c => !used.has(c)) || "R" + S.roles.length;
+  S.roles.push({id, name:"Nuovo ruolo", desc:"", side:"sell", human:true, cap:50, val:50, autoP:null, color:"#64748b"});
+  renderBrief();
+};
+
+/* ================= lettura risposte ================= */
+function matchRole(tok){
+  const t = tok.trim().toLowerCase().replace(/[^a-zàèéìòù0-9]/g, "");
+  if (!t) return null;
+  for (const r of humans()) if (r.id.toLowerCase() === t) return r.id;
+  if (t.length < 3) return null;
+  for (const r of humans()){
+    const words = r.name.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+    if (words.some(w => w.startsWith(t) || t.startsWith(w))) return r.id;
+  }
+  return null;
+}
+const NOPRICE = /\b(max|qualsiasi|qualunque|senza|np|any)\b/i;
+function parse(text){
+  const out = [], errs = [];
+  text.split(/\r?\n/).forEach((line, li) => {
+    if (!line.trim()) return;
+    let lastRole = null;
+    line.split(/[|\/]/).forEach(seg => {
+      if (!seg.trim()) return;
+      const toks = seg.split(/[\s;,\t:]+/).filter(Boolean);
+      let rid = null;
+      for (const t of toks){ if (!/\d/.test(t) && !NOPRICE.test(t)) { rid = matchRole(t); if (rid) break; } }
+      rid = rid || lastRole; lastRole = rid;
+      const nums = (seg.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      if (nums.length >= 2 && !NOPRICE.test(seg)) out.push({ role: rid, q: nums[nums.length-2], p: nums[nums.length-1] });
+      else if (nums.length >= 1 && NOPRICE.test(seg)) out.push({ role: rid, q: nums[nums.length-1], p: null });
+      else errs.push(`riga ${li+1}: «${seg.trim()}» senza MWh e prezzo`);
+    });
+  });
+  return { bids: out, errs };
+}
+let bidSeq = 0;
+$("#parse").onclick = () => {
+  const { bids, errs } = parse($("#raw").value);
+  S.bids = bids.map(b => ({ ...b, uid: ++bidSeq }));
+  const m = $("#parsemsg");
+  m.className = "msg " + (errs.length ? "warn" : "ok");
+  m.innerHTML = `${bids.length} offerte lette.` + (errs.length ? "<br>" + errs.map(esc).join("<br>") : "");
+  renderBids();
+};
+$("#example").onclick = () => {
+  $("#raw").value = "A; 100; 0\nC; 60; 95 | C; 60; 140\nX; 50; max | X; 50; 170\nY; 80; 125";
+  $("#parse").click();
+};
+$("#clear").onclick = () => { $("#raw").value = ""; S.bids = []; $("#parsemsg").textContent = ""; renderBids(); };
+$("#addbid").onclick = () => { const h = humans()[0]; S.bids.push({ role: h ? h.id : "", q: 0, p: 0, uid: ++bidSeq }); renderBids(); };
+
+function checkBid(b){
+  const r = role(b.role);
+  if (!r || !r.human) return ["err", "ruolo mancante"];
+  if (!(b.q > 0)) return ["err", "MWh non validi"];
+  if (b.p === null && r.side === "sell") return ["err", "prezzo mancante"];
+  if (b.p !== null && b.p < 0) return ["warn", "prezzo negativo"];
+  return ["ok", "ok"];
+}
+function usedCap(){
+  const u = {};
+  S.bids.forEach(b => { if (checkBid(b)[0] !== "err") u[b.role] = (u[b.role]||0) + b.q; });
+  return u;
+}
+function autoBids(){
+  return S.roles.filter(r => !r.human && r.cap > 0).map(r => ({ role:r.id, q:r.cap, p:autoP(r), uid:"auto-"+r.id, auto:true }));
+}
+function renderBids(){
+  $("#nbids").textContent = S.bids.length;
+  const used = usedCap();
+  const opts = sel => humans().map(x => `<option value="${esc(x.id)}" ${x.id===sel?"selected":""}>${esc(x.id)} · ${esc(x.name)}</option>`).join("");
+  const rows = S.bids.map((b,i) => {
+    const [lvl, txt] = checkBid(b);
+    const r = role(b.role);
+    const over = r && used[b.role] > r.cap;
+    const side = r ? (r.side === "sell" ? `<span class="side-s">vendita</span>` : `<span class="side-b">acquisto</span>`) : "";
+    return `<tr>
+      <td><span class="tag" style="background:${r ? r.color : "#9ca3af"}">${r ? esc(r.id) : "?"}</span></td>
+      <td><select data-i="${i}" data-k="role"><option value="">—</option>${opts(b.role)}</select></td>
+      <td>${side}</td>
+      <td class="num"><input type="number" data-i="${i}" data-k="q" value="${b.q}"></td>
+      <td class="num"><input type="text" data-i="${i}" data-k="p" value="${b.p === null ? "max" : b.p}" style="width:84px;font-family:var(--mono)"></td>
+      <td><span class="msg ${over ? "err" : lvl}">${over ? "supera il massimo" : txt}</span></td>
+      <td><button class="del" data-del="${i}" title="Elimina">×</button></td></tr>`;
+  });
+  const autos = autoBids().map(b => { const r = role(b.role); return `<tr class="autorow">
+      <td><span class="tag" style="background:${r.color}">${esc(r.id)}</span></td>
+      <td>${esc(r.name)}</td><td>${r.side === "sell" ? "vendita" : "acquisto"}</td>
+      <td class="num">${fmt(b.q)}</td><td class="num">${pTxt(b.p)}</td><td><span class="msg mut">automatica</span></td><td></td></tr>`; });
+  $("#bidtable tbody").innerHTML = rows.join("") + autos.join("");
+  $("#bidtable tbody").querySelectorAll("select,input").forEach(el => el.onchange = () => {
+    const b = S.bids[+el.dataset.i], k = el.dataset.k;
+    if (k === "role") b.role = el.value;
+    else if (k === "q") b.q = Number(el.value);
+    else { const v = el.value.trim(); b.p = (v === "" || NOPRICE.test(v)) ? null : Number(v.replace(",", ".")); }
+    renderBids();
+  });
+  $("#bidtable tbody").querySelectorAll("[data-del]").forEach(el => el.onclick = () => { S.bids.splice(+el.dataset.del, 1); renderBids(); });
+  $("#capbar").innerHTML = humans().map(r => {
+    const u = used[r.id] || 0;
+    return `<span class="cap ${u > r.cap ? "over" : ""}"><b>${esc(r.id)}</b> ${fmt(u)} / ${fmt(r.cap)} MWh</span>`;
+  }).join("");
+}
+$("#go").onclick = () => show("auction");
+
+/* ================= clearing (prezzo marginale di sistema) ================= */
+const dp = b => b.p === null ? Infinity : b.p;
+function clearing(){
+  const all = S.bids.filter(b => checkBid(b)[0] !== "err").map(b => ({...b})).concat(autoBids());
+  all.forEach((b,i) => { b.ord = i; b.side = role(b.role).side; b.acc = 0; });
+  const sup = all.filter(b => b.side === "sell").sort((a,b) => a.p - b.p || a.ord - b.ord);
+  const dem = all.filter(b => b.side === "buy").sort((a,b) => dp(b) - dp(a) || a.ord - b.ord);
+  let c = 0; sup.forEach(b => { b.x0 = c; c += b.q; }); const totS = c;
+  c = 0; dem.forEach(b => { b.x0 = c; c += b.q; }); const totD = c;
+
+  let i = 0, j = 0, rs = sup[0]?.q, rd = dem[0]?.q, Q = 0, ls = -1, ld = -1;
+  while (i < sup.length && j < dem.length && dp(dem[j]) >= sup[i].p){
+    const m = Math.min(rs, rd);
+    sup[i].acc += m; dem[j].acc += m; Q += m; rs -= m; rd -= m; ls = i; ld = j;
+    if (rs <= 1e-9){ i++; rs = sup[i]?.q; }
+    if (rd <= 1e-9){ j++; rd = dem[j]?.q; }
+  }
+  let price = null, marginal = null, how = "";
+  if (Q > 0){
+    const s = sup[ls], d = dem[ld];
+    if (s.acc < s.q){ price = s.p; marginal = s; how = "sell-partial"; }
+    else if (d.acc < d.q && d.p !== null){ price = d.p; marginal = d; how = "buy-partial"; }
+    else {
+      const nd = dem[j];
+      if (nd && nd.p !== null && nd.p > s.p){ price = nd.p; marginal = nd; how = "buy-next"; }
+      else { price = s.p; marginal = s; how = "sell-full"; }
+    }
+  }
+  const shortage = dem.some(b => b.p === null && b.acc < b.q);
+  const players = S.roles.map(r => {
+    const mine = all.filter(b => b.role === r.id);
+    const acc = mine.reduce((s,b) => s + b.acc, 0);
+    const gain = price === null ? 0 : (r.side === "sell" ? (price - r.val) * acc : (r.val - price) * acc);
+    return { r, acc, gain, money: acc * (price ?? 0), bid: mine.length > 0 };
+  });
+  const pabSell = sup.reduce((s,b) => s + b.acc * b.p, 0);
+  return { all, sup, dem, Q, price, marginal, how, shortage, totS, totD, players, pabSell };
+}
+
+/* ================= grafico ================= */
+const NS = "http://www.w3.org/2000/svg";
+const W = 1000, H = 600, M = {l:72, r:30, t:40, b:96};
+let X, Y, yMax, TOP, L = {};
+function el(tag, attrs={}, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function niceStep(range, n){
+  const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p;
+}
+const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+const tween = (dur, fn) => new Promise(res => {
+  const t0 = performance.now();
+  const f = now => { const t = Math.max(0, Math.min(1, (now - t0) / dur)); fn(ease(t)); t < 1 ? requestAnimationFrame(f) : res(); };
+  requestAnimationFrame(f);
+});
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const lerp = (a,b,t) => a + (b-a)*t;
+const yOf = p => p === null ? TOP : Y(p);
+
+function buildChart(){
+  const svg = $("#chart"); svg.innerHTML = "";
+  const R = S.result;
+  const xMax = Math.max(R.totS, R.totD, S.forecast + S.fcErr) * 1.06 || 100;
+  const fin = R.all.filter(b => b.p !== null).map(b => b.p).concat(S.roles.map(r => r.val));
+  const pmax = Math.max(50, ...fin);
+  const ys = niceStep(pmax * 1.12, 6); yMax = Math.ceil(pmax * 1.12 / ys) * ys;
+  X = q => M.l + q / xMax * (W - M.l - M.r);
+  Y = p => H - M.b - Math.min(p, yMax) / yMax * (H - M.t - M.b);
+  TOP = M.t - 16;
+
+  const g = el("g", {class:"grid"}, svg), ax = el("g", {class:"axis"}, svg);
+  for (let v = 0; v <= yMax + 1e-9; v += ys){
+    el("line", {x1:M.l, x2:W-M.r, y1:Y(v), y2:Y(v)}, g);
+    el("text", {x:M.l-10, y:Y(v)+4, "text-anchor":"end"}, ax).textContent = fmt(v);
+  }
+  if (R.dem.some(b => b.p === null)) el("text", {x:M.l-10, y:TOP+4, "text-anchor":"end"}, ax).textContent = "max";
+  const xs = niceStep(xMax, 8);
+  for (let v = 0; v <= xMax; v += xs) el("text", {x:X(v), y:H-M.b+22, "text-anchor":"middle"}, ax).textContent = fmt(v);
+  el("line", {x1:M.l, x2:W-M.r, y1:Y(0), y2:Y(0)}, ax);
+  el("line", {x1:M.l, x2:M.l, y1:TOP-6, y2:Y(0)}, ax);
+  el("text", {x:M.l, y:H-8, "text-anchor":"start"}, ax).textContent = "Energia [MWh]";
+  const cy = (M.t+H-M.b)/2;
+  el("text", {x:18, y:cy, "text-anchor":"middle", transform:`rotate(-90 18 ${cy})`}, ax).textContent = "Prezzo [€/MWh]";
+
+  L.surplus = el("g", {}, svg);
+  L.bars = el("g", {}, svg);
+  L.fc = el("g", {opacity:0, "pointer-events":"none"}, svg);
+  L.dcurve = el("g", {}, svg);
+  L.dem = el("g", {}, svg);
+  L.over = el("g", {}, svg);
+
+  if (S.forecast > 0){
+    const a = X(Math.max(0, S.forecast - S.fcErr)), b = X(S.forecast + S.fcErr), xf = X(S.forecast);
+    if (S.fcErr > 0) el("rect", {x:a, y:TOP, width:b-a, height:Y(0)-TOP, fill:"#1d4ed8", opacity:.08}, L.fc);
+    el("line", {x1:xf, x2:xf, y1:TOP, y2:Y(0)+50, stroke:"#1d4ed8", "stroke-width":2, "stroke-dasharray":"2 5"}, L.fc);
+    el("text", {x:xf, y:Y(0)+66, "text-anchor":"middle", "font-size":13, "font-weight":700, fill:"#1d4ed8"}, L.fc)
+      .textContent = `Fabbisogno stimato ${fmt(S.forecast)}${S.fcErr > 0 ? " ± " + fmt(S.fcErr) : ""} MWh`;
+  }
+  // vendite, in ordine di arrivo
+  let c = 0;
+  R.sIn = R.sup.slice().sort((a,b) => a.ord - b.ord).map(b => {
+    const o = { b, xin: c }; c += b.q;
+    const r = role(b.role);
+    o.grp = el("g", {}, L.bars);
+    o.h = Math.max(3, Y(0) - Y(b.p));
+    o.rect = el("rect", {x:X(o.xin), y:Y(0), width:Math.max(1, X(b.q)-X(0)-2), height:0, fill:r.color, rx:3}, o.grp);
+    o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:Y(0)-8, opacity:0}, o.grp);
+    o.lbl.textContent = r.id;
+    o.pl = el("text", {class:"pricelbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:Y(b.p)-7, opacity:0}, o.grp);
+    o.pl.textContent = fmt(b.p);
+    o.wide = X(b.q) - X(0) > 30;
+    return o;
+  });
+  // acquisti, in ordine di arrivo
+  c = 0;
+  R.dIn = R.dem.slice().sort((a,b) => a.ord - b.ord).map(b => {
+    const o = { b, xin: c }; c += b.q;
+    const r = role(b.role), y = yOf(b.p);
+    o.grp = el("g", {opacity:0}, L.dem);
+    o.line = el("line", {x1:X(o.xin)+2, x2:X(o.xin+b.q)-2, y1:y, y2:y, stroke:r.color, "stroke-width":7, "stroke-linecap":"round"}, o.grp);
+    o.lbl = el("text", {"text-anchor":"middle", x:X(o.xin + b.q/2), y:y-10, "font-weight":700, "font-size":14, fill:r.color}, o.grp);
+    o.lbl.textContent = `${r.id} · ${pTxt(b.p)}`;
+    return o;
+  });
+}
+function moveDem(o, x){
+  o.line.setAttribute("x1", X(x)+2); o.line.setAttribute("x2", X(x+o.b.q)-2);
+  o.lbl.setAttribute("x", X(x + o.b.q/2));
+}
+
+const STEPS = [
+  ["Il GME apre le offerte di vendita", "Ogni barra è un'offerta: la larghezza indica i MWh, l'altezza il prezzo minimo richiesto."],
+  ["Ordine di merito: la curva di offerta", "Le offerte di vendita in fila dalla più economica alla più cara."],
+  ["Arrivano le offerte di acquisto", "In fila dalla più alta alla più bassa: è la curva di domanda. «max» = compra a qualunque prezzo. La banda blu è il fabbisogno stimato."],
+  ["L'incrocio delle curve fissa il prezzo", ""],
+  ["Tutti scambiano allo stesso prezzo", "Le aree colorate sono i surplus: sotto la linea quello dei produttori, sopra quello degli acquirenti."],
+];
+function setCaption(i, sub){
+  $("#cap").textContent = `${i+1} · ${STEPS[i][0]}`;
+  $("#subcap").textContent = sub ?? STEPS[i][1];
+  document.querySelectorAll("#stepbar i").forEach((e,k) => e.classList.toggle("on", k <= i));
+}
+
+async function step0(){
+  await Promise.all(S.result.sIn.map(async (o,i) => {
+    await wait(i * 140);
+    await tween(550, t => { o.rect.setAttribute("height", o.h*t); o.rect.setAttribute("y", Y(0) - o.h*t); });
+    if (o.wide) o.lbl.setAttribute("opacity", 1);
+    o.pl.setAttribute("opacity", 1);
+  }));
+}
+async function step1(){
+  await Promise.all(S.result.sIn.map(async (o,i) => {
+    await wait(i * 60);
+    const a = o.xin, b = o.b.x0, q = o.b.q;
+    await tween(900, t => {
+      const x = lerp(a, b, t);
+      o.rect.setAttribute("x", X(x)); o.lbl.setAttribute("x", X(x + q/2)); o.pl.setAttribute("x", X(x + q/2));
+    });
+  }));
+}
+async function step2(){
+  const R = S.result;
+  if (S.forecast > 0) await tween(500, t => L.fc.setAttribute("opacity", t));
+  await Promise.all(R.dIn.map(async (o,i) => {
+    await wait(i * 140);
+    const y = yOf(o.b.p);
+    await tween(450, t => { o.grp.setAttribute("opacity", t); o.grp.setAttribute("transform", `translate(0 ${(1-t)*-20})`); });
+  }));
+  await wait(400);
+  await Promise.all(R.dIn.map(o => tween(900, t => moveDem(o, lerp(o.xin, o.b.x0, t)))));
+  // gradini della curva di domanda
+  if (R.dem.length){
+    let d = `M ${X(0)} ${yOf(R.dem[0].p)}`;
+    R.dem.forEach((b,k) => {
+      d += ` H ${X(b.x0 + b.q)}`;
+      const nx = R.dem[k+1];
+      d += ` V ${nx ? yOf(nx.p) : Y(0)}`;
+    });
+    const path = el("path", {d, fill:"none", stroke:"#1d2330", "stroke-width":2, opacity:0}, L.dcurve);
+    await tween(500, t => path.setAttribute("opacity", t * .8));
+  }
+}
+async function step3(){
+  const R = S.result;
+  if (R.price === null){ setCaption(3, "Le curve non si incrociano: nessuno scambio. Nessun acquirente paga quanto chiede il produttore più economico."); return; }
+  const m = R.marginal, r = role(m.role);
+  const txt = {
+    "sell-partial": `Lo fissa l'offerta di vendita di ${r.id} (${r.name}), accettata solo in parte: ${fmt(m.acc)} su ${fmt(m.q)} MWh a ${fmt(m.p)} €/MWh.`,
+    "sell-full":    `Lo fissa l'ultima offerta di vendita accettata: ${r.id} (${r.name}) a ${fmt(m.p)} €/MWh.`,
+    "buy-partial":  `Lo fissa un'offerta di ACQUISTO: ${r.id} (${r.name}) ottiene solo ${fmt(m.acc)} dei ${fmt(m.q)} MWh richiesti, a ${fmt(m.p)} €/MWh.`,
+    "buy-next":     `Lo fissa la prima offerta di acquisto esclusa: ${r.id} (${r.name}) a ${fmt(m.p)} €/MWh.`,
+  }[R.how];
+  setCaption(3, txt + (R.shortage ? " Attenzione: l'offerta non copre tutta la domanda senza prezzo." : ""));
+
+  // escluse e parti non accettate
+  R.sIn.forEach(o => {
+    if (o.b.acc === 0){ o.grp.style.transition = "opacity .6s"; o.grp.style.opacity = .2; }
+    else if (o.b.acc < o.b.q) el("rect", {x:X(o.b.x0 + o.b.acc), y:Y(o.b.p), width:X(o.b.q - o.b.acc) - X(0), height:o.h, fill:"#fff", opacity:.72}, o.grp);
+  });
+  R.dIn.forEach(o => {
+    if (o.b.acc === 0){ o.grp.style.transition = "opacity .6s"; o.grp.style.opacity = .25; o.line.setAttribute("stroke-dasharray", "4 8"); }
+    else if (o.b.acc < o.b.q){
+      const y = yOf(o.b.p);
+      o.line.setAttribute("x2", X(o.b.x0 + o.b.acc) - 2);
+      el("line", {x1:X(o.b.x0 + o.b.acc)+2, x2:X(o.b.x0 + o.b.q)-2, y1:y, y2:y, stroke:role(o.b.role).color, "stroke-width":7, "stroke-dasharray":"4 8", opacity:.4}, o.grp);
+    }
+  });
+  // evidenzia l'offerta marginale
+  let hl;
+  if (m.side === "sell") hl = el("rect", {x:X(m.x0)-3, y:Y(m.p)-3, width:Math.max(6, X(Math.max(m.acc, m.q*0.02))-X(0)+4), height:Math.max(3, Y(0)-Y(m.p))+6, fill:"none", stroke:"var(--price)", "stroke-width":3, rx:4, opacity:0}, L.over);
+  else hl = el("rect", {x:X(m.x0)-6, y:Y(m.p)-12, width:X(m.q)-X(0)+12, height:24, fill:"none", stroke:"var(--price)", "stroke-width":3, rx:8, opacity:0}, L.over);
+  await tween(350, t => hl.setAttribute("opacity", t));
+  // quantità scambiata
+  const xq = X(R.Q);
+  const ql = el("line", {x1:xq, x2:xq, y1:Y(0), y2:Y(0), stroke:"#1d2330", "stroke-width":1.5, "stroke-dasharray":"5 5"}, L.over);
+  await tween(500, t => ql.setAttribute("y1", lerp(Y(0), Y(R.price), t)));
+  el("line", {x1:xq, x2:xq, y1:Y(0), y2:Y(0)+32, stroke:"#1d2330", "stroke-width":1.5}, L.over);
+  const qt = el("text", {x:xq, y:Y(0)+46, "text-anchor":"middle", stroke:"#fff", "stroke-width":4, "paint-order":"stroke", "font-size":13, "font-weight":700, fill:"#1d2330"}, L.over);
+  qt.textContent = `Q = ${fmt(R.Q)} MWh`;
+  // linea di prezzo
+  const yp = Y(R.price);
+  const pl = el("line", {x1:M.l, x2:M.l, y1:yp, y2:yp, stroke:"var(--price)", "stroke-width":3}, L.over);
+  await tween(800, t => pl.setAttribute("x2", lerp(M.l, xq, t)));
+  const lab = el("text", {x:M.l+8, y:yp-10, fill:"var(--price)", "font-weight":700, "font-size":17}, L.over);
+  lab.textContent = `PUN = ${fmt(R.price)} €/MWh`;
+  await tween(800, t => $("#bigprice").innerHTML = `${fmt(R.price * t)} <small>€/MWh</small>`);
+  $("#qty").innerHTML = `Energia scambiata: <b>${fmt(R.Q)}</b> MWh` + (S.forecast > 0 ? `<br>Fabbisogno stimato: <b>${fmt(S.forecast)}</b>${S.fcErr > 0 ? " ± " + fmt(S.fcErr) : ""} MWh (scarto ${R.Q - S.forecast >= 0 ? "+" : "−"}${fmt(Math.abs(R.Q - S.forecast))})` : "");
+  if (R.shortage) $("#shortage").innerHTML = `<div class="shortage">Domanda senza prezzo non coperta: mancano ${fmt(R.dem.filter(b=>b.p===null).reduce((s,b)=>s+b.q-b.acc,0))} MWh</div>`;
+}
+async function step4(){
+  const R = S.result; if (R.price === null) return;
+  const yp = Y(R.price);
+  const sp = R.sup.filter(b => b.acc > 0 && b.p < R.price);
+  const dm = R.dem.filter(b => b.acc > 0 && b.p !== null && b.p > R.price);
+  const anim = [];
+  sp.forEach((b,i) => anim.push((async () => {
+    await wait(i * 120);
+    const y1 = Y(b.p);
+    const rc = el("rect", {x:X(b.x0), y:y1, width:Math.max(1, X(b.acc)-X(0)-2), height:0, fill:role(b.role).color, opacity:.35, rx:2}, L.surplus);
+    await tween(700, t => { rc.setAttribute("y", lerp(y1, yp, t)); rc.setAttribute("height", (y1 - yp) * t); });
+  })()));
+  dm.forEach((b,i) => anim.push((async () => {
+    await wait(i * 120);
+    const y1 = Y(b.p);
+    const rc = el("rect", {x:X(b.x0), y:yp, width:Math.max(1, X(b.acc)-X(0)-2), height:0, fill:role(b.role).color, opacity:.3, rx:2}, L.surplus);
+    await tween(700, t => { rc.setAttribute("y", lerp(yp, y1, t)); rc.setAttribute("height", (yp - y1) * t); });
+  })()));
+  await Promise.all(anim);
+  renderResults();
+}
+function renderResults(){
+  const R = S.result;
+  const row = p => `<tr class="${p.r.human ? "" : "autor"}"><td><span class="tag" style="background:${p.r.color}">${esc(p.r.id)}</span> ${p.r.human ? "" : "<small>auto</small>"}</td>
+      <td class="num">${fmt(p.acc)}</td><td class="num">${fmt(p.money)}</td>
+      <td class="num" style="color:${p.gain<0?"var(--err)":"inherit"};font-weight:${p.r.human?700:400}">${p.r.side==="buy" && p.r.val===0 && !p.r.human ? "—" : fmt(p.gain)}</td></tr>`;
+  const sorted = side => R.players.filter(p => p.r.side === side).sort((a,b) => (b.r.human - a.r.human) || (b.gain - a.gain));
+  $("#restable").innerHTML = `<table class="res fadein"><thead><tr><th></th><th class="num">MWh</th><th class="num">€ scambiati</th><th class="num">Guadagno €</th></tr></thead><tbody>
+    <tr class="grp"><td colspan="4">Produttori · (prezzo − costo) × MWh</td></tr>${sorted("sell").map(row).join("")}
+    <tr class="grp"><td colspan="4">Acquirenti · (valore − prezzo) × MWh</td></tr>${sorted("buy").map(row).join("")}
+  </tbody></table>`;
+  $("#pabbtn").disabled = false; $("#save").disabled = false;
+}
+$("#pabbtn").onclick = () => {
+  const R = S.result, box = $("#pab");
+  const spm = (R.price ?? 0) * R.Q;
+  box.style.display = box.style.display === "block" ? "none" : "block";
+  box.innerHTML = `<b>Quanto incassano i produttori?</b><br>Con il prezzo marginale: <b>${fmt(spm)} €</b><br>
+    Con il pay-as-bid e <i>queste stesse</i> offerte: <b>${fmt(R.pabSell)} €</b><br>
+    <span style="color:var(--muted)">Ma con il pay-as-bid avreste fatto le stesse offerte? Chi viene pagato quanto chiede offre vicino al prezzo atteso (${esc(S.typical)} €/MWh), non al proprio costo.</span>`;
+};
+$("#save").onclick = () => {
+  const R = S.result; if (R.price === null) return;
+  const ex = R.players.filter(p => p.r.human && p.bid && p.acc === 0).map(p => p.r.id);
+  S.history.push({ n: S.history.length + 1, price: R.price, Q: R.Q, ex });
+  $("#save").disabled = true; renderHistory();
+};
+function renderHistory(){
+  $("#history").innerHTML = S.history.length ? `<div class="label">Round giocati</div>` + S.history.map(h =>
+    `<div class="h"><span>Round ${h.n} · ${fmt(h.Q)} MWh${h.ex.length ? " · esclusi: " + h.ex.join(", ") : ""}</span><b>${fmt(h.price)} €/MWh</b></div>`).join("") : "";
+}
+
+const RUN = [step0, step1, step2, step3, step4];
+function resetAuction(){
+  S.result = clearing();
+  S.step = 0; S.busy = false;
+  $("#bigprice").innerHTML = "—"; $("#qty").innerHTML = ""; $("#restable").innerHTML = ""; $("#shortage").innerHTML = "";
+  $("#pab").style.display = "none"; $("#pabbtn").disabled = true; $("#save").disabled = true;
+  document.querySelectorAll("#stepbar i").forEach(e => e.classList.remove("on"));
+  renderHistory();
+  if (!S.result.sup.length || !S.result.dem.length){
+    $("#cap").textContent = "Servono offerte di vendita e di acquisto";
+    $("#subcap").textContent = "Inserisci le offerte nella scheda «Offerte».";
+    $("#chart").innerHTML = ""; $("#next").disabled = true; $("#play").disabled = true; return;
+  }
+  $("#next").disabled = false; $("#play").disabled = false;
+  const nh = S.bids.filter(b => checkBid(b)[0] !== "err").length;
+  $("#cap").textContent = `${nh} offerte dei docenti + ${autoBids().length} automatiche in busta chiusa`;
+  $("#subcap").textContent = "Premi «Avanti» per aprirle.";
+  buildChart();
+}
+async function next(){
+  if (S.busy || S.step >= RUN.length) return;
+  S.busy = true;
+  setCaption(S.step);
+  await RUN[S.step]();
+  S.step++; S.busy = false;
+  if (S.step >= RUN.length) { $("#next").disabled = true; $("#play").disabled = true; }
+}
+$("#next").onclick = next;
+$("#play").onclick = async () => { while (S.step < RUN.length) { await next(); await wait(500); } };
+$("#restart").onclick = resetAuction;
+document.addEventListener("keydown", e => {
+  if (!$("#v-auction").classList.contains("active") || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+  if (e.key.toLowerCase() === "r") resetAuction();
+});
+
+/* ================= gioco online (Firebase Realtime Database) ================= */
+// >>> INCOLLA QUI la configurazione del tuo progetto Firebase (Impostazioni progetto → Le tue app → Config)
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArNmvc5HzcBD7KhNaagwIHssa_4MqVldA",
+  authDomain: "borsa-elettrica.firebaseapp.com",
+  databaseURL: "https://borsa-elettrica-default-rtdb.europe-west1.firebasedatabase.app",
+     projectId: "borsa-elettrica",
+     storageBucket: "borsa-elettrica.firebasestorage.app",
+     messagingSenderId: "573143942983",
+     appId: "1:573143942983:web:33bab4b6919a26c382ee62"
+};
+const GAME = "mgp";               // nome della partita nel database
+const FIREBASE_VERSION = "10.12.2";
+// <<<
+
+const JOIN_URL = location.href.split("#")[0] + "#gioca";
+const LS = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const N = { ready:false, be:null, uid:null, owner:true, connected:false, config:null, cfgLoaded:false, liveBids:[], timedOut:false, why:"" };
+const P = { role: LS.get("mgp-role"), name: LS.get("mgp-name") || "", form: null, my: null, sending:false, err:"", editing:false };
+let playerMode = location.hash === "#gioca";
+
+N.uid = LS.get("mgp-uid"); if (!N.uid){ N.uid = rid(); LS.set("mgp-uid", N.uid); }
+
+const normOffers = o => Object.values(o || {}).map(x => ({ q: Number(x.q), p: (x.p === undefined || x.p === null || x.p === "max") ? null : Number(x.p) }));
+const normCfg = c => c ? { ...c, roles: Object.values(c.roles || {}) } : null;
+
+async function firebaseBackend(){
+  if (window.__MGP_BACKEND) return window.__MGP_BACKEND;            // per i test
+  if (!FIREBASE_CONFIG.databaseURL){ N.why = "noconfig"; return null; }
+  try {
+    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+    const appM = await import(base + "firebase-app.js");
+    const dbM  = await import(base + "firebase-database.js");
+    const app = appM.initializeApp(FIREBASE_CONFIG);
+    const db = dbM.getDatabase(app);
+    const R = p => dbM.ref(db, `games/${GAME}/${p}`);
+    return {
+      onConfig: (cb, err) => dbM.onValue(R("config"), s => cb(s.val()), err),
+      onBids:   (cb, err) => dbM.onValue(R("bids"), s => cb(Object.entries(s.val() || {}).map(([id, b]) => ({ id, ...b }))), err),
+      onMine:   (uid, cb) => dbM.onValue(R("bids/" + uid), s => cb(s.val())),
+      setConfig: body => dbM.set(R("config"), body),
+      setMine:  (uid, body) => dbM.set(R("bids/" + uid), body),
+      onConnected: cb => dbM.onValue(dbM.ref(db, ".info/connected"), s => cb(!!s.val())),
+    };
+  } catch(e){ N.why = "load"; console.error(e); return null; }
+}
+
+function enterPlayer(){
+  playerMode = true;
+  document.body.classList.add("player");
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "v-play"));
+  renderPlayer();
+}
+window.addEventListener("hashchange", () => { if (location.hash === "#gioca") enterPlayer(); });
+if (playerMode) enterPlayer();
+
+// link e QR
+$("#joinurl").textContent = JOIN_URL;
+$("#copyjoin").onclick = async () => { try { await navigator.clipboard.writeText(JOIN_URL); $("#copyjoin").textContent = "Copiato ✓"; } catch(e){ $("#copyjoin").textContent = "Copia a mano il link"; } };
+function drawQR(){ try { if (window.QRCode && !$("#qr").childElementCount) new QRCode($("#qr"), { text: JOIN_URL, width: 120, height: 120, correctLevel: QRCode.CorrectLevel.M }); } catch(e){} }
+
+(async () => {
+  const be = await firebaseBackend();
+  N.be = be; N.ready = true;
+  if (!be){ renderLive(); renderPlayer(); return; }
+  if (!playerMode){ $("#joinbox").style.display = "flex"; drawQR(); setTimeout(drawQR, 1500); }
+  const timer = setTimeout(() => { N.timedOut = true; renderLive(); renderPlayer(); }, 10000);
+  be.onConnected(c => { N.connected = c; renderLive(); });
+  be.onConfig(v => {
+    clearTimeout(timer); N.timedOut = false;
+    N.config = normCfg(v); N.cfgLoaded = true;
+    renderLive(); renderPlayer();
+  }, e => { clearTimeout(timer); N.cfgLoaded = true; N.why = "denied"; console.error(e); renderLive(); renderPlayer(); });
+  if (!playerMode){
+    be.onBids(list => { N.liveBids = list.map(b => ({ ...b, offers: normOffers(b.offers) })); renderLive(); }, () => {});
+  }
+  be.onMine(N.uid, d => {
+    P.my = d ? { ...d, offers: normOffers(d.offers) } : null;
+    if (P.my && N.config && P.my.round === N.config.round && P.my.role) P.role = P.my.role;
+    renderPlayer();
+  });
+})();
+
+/* ---- pannello del docente ---- */
+function curBids(){ const r = N.config?.round; return N.liveBids.filter(b => r && b.round === r); }
+function renderLive(){
+  if (playerMode) return;
+  const st = $("#lvstate"), help = $("#lvhelp"), list = $("#lvlist"), btns = $("#lvbtns");
+  if (!N.ready) return;
+  if (!N.be){
+    st.className = "badge idle"; st.textContent = "non configurato";
+    help.innerHTML = N.why === "noconfig"
+      ? "Per le offerte live incolla la configurazione di Firebase in cima al file (FIREBASE_CONFIG). Intanto puoi usare il piano B qui sotto."
+      : "Non riesco a caricare Firebase: controlla la connessione. Intanto puoi usare il piano B qui sotto.";
+    list.innerHTML = ""; btns.innerHTML = ""; $("#altbox").open = true; return;
+  }
+  if (N.why === "denied"){ st.className = "badge closed"; st.textContent = "accesso negato"; help.textContent = "Firebase rifiuta la lettura: controlla le regole del Realtime Database (vedi istruzioni)."; return; }
+  if (!N.cfgLoaded){ help.textContent = N.timedOut ? "Non riesco a raggiungere il database: controlla la connessione e il databaseURL." : "Collegamento in corso…"; return; }
+  const c = N.config, open = !!c?.open;
+  st.className = "badge " + (c ? (open ? "open" : "closed") : "idle");
+  st.textContent = (N.connected ? "" : "⚠ offline · ") + (c ? `Round ${c.round} · ${open ? "offerte aperte" : "offerte chiuse"}` : "nessun round");
+  const bs = curBids();
+  help.innerHTML = c
+    ? `${bs.length} docent${bs.length === 1 ? "e ha" : "i hanno"} inviato le offerte.${open ? " Possono modificarle finché le offerte sono aperte." : ""}`
+    : "Apri un round: i docenti vedranno lo scenario attuale (ruoli, fabbisogno, prezzo tipico) e potranno inviare le offerte dal link.";
+  list.innerHTML = bs.slice().sort((a,b) => (a.at||0) - (b.at||0)).map(b => {
+    const r = role(b.role) || (c?.roles || []).find(x => x.id === b.role);
+    const offs = (b.offers || []).map(o => `${fmt(o.q)} @ ${o.p === null ? "max" : fmt(o.p)}`).join(" · ");
+    return `<div class="lv"><span class="tag" style="background:${r ? r.color : "#9ca3af"}">${esc(b.role || "?")}</span>
+      <span class="who">${esc(b.name || "Docente")}</span><span class="off">${esc(offs)}</span></div>`;
+  }).join("");
+  const B = [];
+  if (!c || !open) B.push(`<button class="btn accent small" id="lv-new">${c ? "Nuovo round" : "Apri il round 1"}</button>`);
+  if (c && !open) B.push(`<button class="btn secondary small" id="lv-reopen">Riapri le offerte</button>`);
+  if (c && open) B.push(`<button class="btn small" id="lv-close">Chiudi le offerte e importa</button>`);
+  if (c && bs.length) B.push(`<button class="btn secondary small" id="lv-import">Importa le offerte</button>`);
+  btns.innerHTML = B.join("");
+  const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
+  on("#lv-new", () => writeConfig({ round: (c?.round || 0) + 1, open: true }));
+  on("#lv-reopen", () => writeConfig({ ...c, open: true }));
+  on("#lv-close", async () => { await writeConfig({ ...c, open: false }); importLive(); });
+  on("#lv-import", importLive);
+}
+let cfgWriting = false;
+async function writeConfig(base){
+  if (cfgWriting) return; cfgWriting = true;
+  const body = {
+    round: base.round, open: base.open,
+    roles: humans().map(r => ({ id:r.id, name:r.name, desc:r.desc || "", side:r.side, cap:r.cap, val:r.val, color:r.color })),
+    typical: S.typical, forecast: S.forecast, fcErr: S.fcErr, at: Date.now()
+  };
+  try { await N.be.setConfig(body); }
+  catch(e){ $("#lvhelp").textContent = "Scrittura non riuscita: " + (e?.message || "controlla le regole del database"); }
+  cfgWriting = false;
+}
+function importLive(){
+  const bs = curBids(); if (!bs.length) return;
+  S.bids = [];
+  bs.forEach(b => (b.offers || []).forEach(o => S.bids.push({ role: b.role, q: o.q, p: o.p, uid: ++bidSeq })));
+  renderBids();
+  $("#parsemsg").className = "msg ok";
+  $("#parsemsg").textContent = `${S.bids.length} offerte importate dai docenti.`;
+}
+
+/* ---- vista del giocatore ---- */
+function pRole(){ return (N.config?.roles || []).find(r => r.id === P.role) || null; }
+function renderPlayer(){
+  if (!playerMode) return;
+  const w = $("#pwrap"), c = N.config;
+  const card = h => `<div class="card">${h}</div>`;
+  if (!N.ready){ w.innerHTML = card(`<p class="pbig">Collegamento…</p>`); return; }
+  if (!N.be){ w.innerHTML = card(`<p class="pbig">⚡ Borsa elettrica</p><p class="pmuted">Il gioco online non è attivo. Chiedi al docente come inviare le offerte.</p>`); return; }
+  if (!N.cfgLoaded){ w.innerHTML = card(`<p class="pbig">Collegamento…</p><p class="pmuted">${N.timedOut ? "Non riesco a raggiungere il gioco. Controlla la connessione." : ""}</p>`); return; }
+  if (!c){ w.innerHTML = card(`<p class="pbig">⚡ Borsa elettrica</p><p class="pmuted">In attesa che il docente apra il primo round…</p>`); return; }
+
+  const head = `<div class="row" style="justify-content:space-between"><p class="pbig" style="margin:0">⚡ Round ${c.round}</p>
+    <span class="badge ${c.open ? "open" : "closed"}">${c.open ? "offerte aperte" : "offerte chiuse"}</span></div>
+    <p class="pmuted" style="margin:8px 0 0">MGP, ora 20:00 di domani · Fabbisogno stimato <b>${fmt(c.forecast)}${c.fcErr ? " ± " + fmt(c.fcErr) : ""} MWh</b> · Prezzo tipico <b>${esc(c.typical)} €/MWh</b></p>`;
+
+  const r = pRole();
+  if (!r){
+    w.innerHTML = card(head) + card(`<p class="pbig">Chi sei?</p>
+      <div class="offer" style="grid-template-columns:1fr"><div><label>Il tuo nome</label><input type="text" id="pname" value="${esc(P.name)}" placeholder="es. Maria" style="width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-top:4px"></div></div>
+      <p class="pmuted">Scegli il ruolo che ti ha assegnato il docente.</p>
+      <div class="rolepick">${(c.roles || []).map(x => `<button data-r="${esc(x.id)}" style="background:${x.color}">${esc(x.id)} · ${esc(x.name)}<small>${x.side === "sell" ? "Produttore" : "Acquirente"}</small></button>`).join("")}</div>`);
+    $("#pname").oninput = e => { P.name = e.target.value; LS.set("mgp-name", P.name); };
+    w.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { P.role = b.dataset.r; LS.set("mgp-role", P.role); P.form = null; P.editing = false; renderPlayer(); });
+    return;
+  }
+  const isS = r.side === "sell";
+  const roleCardH = `<div class="role" style="background:${r.color};min-height:0">
+    <div class="id">${esc(r.id)}</div><div class="nm">${esc(r.name)}</div><div class="ds">${esc(r.desc)}</div>
+    <div class="kv"><span>${isS ? "Capacità" : "Fabbisogno max"}<br><b>${fmt(r.cap)}</b> MWh</span>
+    <span>${isS ? "Il tuo costo" : "Il tuo valore"}<br><b>${fmt(r.val)}</b> €/MWh</span></div></div>
+    <p class="pmuted" style="margin:10px 0 0">${isS ? "Guadagno = (prezzo − costo) × MWh venduti. Offri il <b>prezzo minimo</b> a cui vendi." : "Guadagno = (valore − prezzo) × MWh comprati. Offri il <b>prezzo massimo</b> che paghi."}
+    <a href="#gioca" id="chrole" style="color:var(--muted)">Cambia ruolo</a></p>`;
+
+  const mine = P.my && P.my.round === c.round && P.my.role === r.id ? P.my : null;
+  let body = "";
+  if (mine && !P.editing){
+    body = `<div class="sent">✓ Offerte inviate<br><span style="font-family:var(--mono);font-weight:500">${(mine.offers || []).map(o => `${fmt(o.q)} MWh a ${o.p === null ? "qualunque prezzo" : fmt(o.p) + " €/MWh"}`).join("<br>")}</span></div>
+      ${c.open ? `<button class="btn secondary" id="edit" style="margin-top:12px;width:100%">Modifica le offerte</button>` : `<p class="pmuted" style="margin-top:12px">Offerte chiuse: guarda lo schermo!</p>`}`;
+  } else if (!c.open){
+    body = `<p class="pmuted">Le offerte sono chiuse${mine ? "" : " e non hai inviato nulla in questo round"}. Guarda lo schermo!</p>`;
+  } else {
+    if (!P.form) P.form = mine ? mine.offers.map(o => ({ q: o.q, p: o.p === null ? "" : o.p, np: o.p === null })) : [{ q:"", p:"", np:false }];
+    body = `<p class="pbig" style="font-size:18px">Le tue offerte ${isS ? "di vendita" : "di acquisto"}</p>` +
+      P.form.map((o,i) => `<div class="offer">
+        <div><label>Offerta ${i+1} · MWh</label><input type="number" inputmode="decimal" min="0" data-i="${i}" data-k="q" value="${o.q}"></div>
+        <div><label>${isS ? "Prezzo minimo" : "Prezzo massimo"} €/MWh</label><input type="number" inputmode="decimal" min="0" data-i="${i}" data-k="p" value="${o.np ? "" : o.p}" ${o.np ? "disabled" : ""}></div>
+        ${isS ? "" : `<label class="np"><input type="checkbox" data-i="${i}" data-k="np" ${o.np ? "checked" : ""}> senza prezzo: compro a qualunque prezzo</label>`}
+        ${i > 0 ? `<a href="#gioca" data-rm="${i}" class="np" style="color:var(--muted)">Rimuovi questa offerta</a>` : ""}
+      </div>`).join("") +
+      (P.form.length < 2 ? `<button class="btn secondary" id="add2" style="width:100%;margin-bottom:10px">+ Seconda offerta (a un altro prezzo)</button>` : "") +
+      `<button class="btn accent bigbtn" id="send" ${P.sending ? "disabled" : ""}>${P.sending ? "Invio…" : "Invia le offerte"}</button>
+      <div class="perr">${esc(P.err)}</div>`;
+  }
+  w.innerHTML = card(head) + card(roleCardH) + card(body);
+
+  $("#chrole").onclick = e => { e.preventDefault(); P.role = null; P.form = null; P.editing = false; renderPlayer(); };
+  const ed = $("#edit"); if (ed) ed.onclick = () => { P.editing = true; P.form = null; renderPlayer(); };
+  w.querySelectorAll(".offer input[data-k]").forEach(inp => inp.oninput = inp.onchange = () => {
+    const o = P.form[+inp.dataset.i], k = inp.dataset.k;
+    if (k === "np"){ o.np = inp.checked; renderPlayer(); } else o[k] = inp.value;
+  });
+  w.querySelectorAll("[data-rm]").forEach(a => a.onclick = e => { e.preventDefault(); P.form.splice(+a.dataset.rm, 1); renderPlayer(); });
+  const a2 = $("#add2"); if (a2) a2.onclick = () => { P.form.push({ q:"", p:"", np:false }); renderPlayer(); };
+  const sd = $("#send"); if (sd) sd.onclick = () => sendOffers(r);
+}
+async function sendOffers(r){
+  const c = N.config; P.err = "";
+  const offers = [];
+  for (const o of P.form){
+    const q = Number(o.q), p = o.np ? null : (o.p === "" ? NaN : Number(o.p));
+    if (!(q > 0)) { P.err = "Indica i MWh di ogni offerta."; return renderPlayer(); }
+    if (p !== null && !(p >= 0)) { P.err = r.side === "sell" ? "Indica il prezzo minimo di ogni offerta." : "Indica il prezzo massimo o scegli «senza prezzo»."; return renderPlayer(); }
+    offers.push({ q, p: p === null ? "max" : p });
+  }
+  const tot = offers.reduce((s,o) => s + o.q, 0);
+  if (tot > r.cap) { P.err = `In totale offri ${fmt(tot)} MWh, ma il massimo è ${fmt(r.cap)} MWh.`; return renderPlayer(); }
+  P.sending = true; renderPlayer();
+  try {
+    await N.be.setMine(N.uid, { round: c.round, role: r.id, name: (P.name || "").slice(0, 40), offers, at: Date.now() });
+    P.editing = false; P.form = null;
+  } catch(e){ P.err = "Invio non riuscito, riprova."; }
+  P.sending = false; renderPlayer();
+}
+
+renderBrief(); renderBids();
+})();
+</script>
+</body>
+</html>
