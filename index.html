@@ -732,15 +732,26 @@ async function step3(){
   const xq = X(R.Q);
   const ql = el("line", {x1:xq, x2:xq, y1:Y(0), y2:Y(0), stroke:"#1d2330", "stroke-width":1.5, "stroke-dasharray":"5 5"}, L.over);
   await tween(500, t => ql.setAttribute("y1", lerp(Y(0), Y(R.price), t)));
-  el("line", {x1:xq, x2:xq, y1:Y(0), y2:Y(0)+32, stroke:"#1d2330", "stroke-width":1.5}, L.over);
-  const qt = el("text", {x:xq, y:Y(0)+46, "text-anchor":"middle", stroke:"#fff", "stroke-width":4, "paint-order":"stroke", "font-size":13, "font-weight":700, fill:"#1d2330"}, L.over);
+  // etichetta della quantità: pillola scura appoggiata all'asse delle ascisse
+  el("path", {d:`M ${xq-7} ${Y(0)+11} L ${xq+7} ${Y(0)+11} L ${xq} ${Y(0)+1} Z`, fill:"#1d2330"}, L.over);
+  const qg = el("g", {opacity:0}, L.over);
+  const qr = el("rect", {y:Y(0)-46, height:28, rx:14, fill:"#1d2330"}, qg);
+  const qt = el("text", {y:Y(0)-26, "font-size":17, "font-weight":700, fill:"#fff"}, qg);
   qt.textContent = `Q = ${fmt(R.Q)} MWh`;
+  const qw = (qt.getComputedTextLength ? qt.getComputedTextLength() : 120) + 24;
+  const right = xq + 10 + qw < W - M.r;
+  const qx = right ? xq + 10 : xq - 10 - qw;
+  qr.setAttribute("x", qx); qr.setAttribute("width", qw);
+  qt.setAttribute("x", qx + 12);
+  el("line", {x1:right ? qx : qx + qw, x2:xq, y1:Y(0)-32, y2:Y(0)-32, stroke:"#1d2330", "stroke-width":2}, qg);
+  await tween(350, t => qg.setAttribute("opacity", t));
   // linea di prezzo
   const yp = Y(R.price);
   const pl = el("line", {x1:M.l, x2:M.l, y1:yp, y2:yp, stroke:"var(--price)", "stroke-width":3}, L.over);
   await tween(800, t => pl.setAttribute("x2", lerp(M.l, xq, t)));
   const lab = el("text", {x:M.l+8, y:yp-10, fill:"var(--price)", "font-weight":700, "font-size":17}, L.over);
   lab.textContent = `PUN = ${fmt(R.price)} €/MWh`;
+  el("circle", {cx:xq, cy:yp, r:7, fill:"var(--price)", stroke:"#fff", "stroke-width":3}, L.over);
   await tween(800, t => $("#bigprice").innerHTML = `${fmt(R.price * t)} <small>€/MWh</small>`);
   $("#qty").innerHTML = `Energia scambiata: <b>${fmt(R.Q)}</b> MWh` + (S.forecast > 0 ? `<br>Fabbisogno stimato: <b>${fmt(S.forecast)}</b>${S.fcErr > 0 ? " ± " + fmt(S.fcErr) : ""} MWh (scarto ${R.Q - S.forecast >= 0 ? "+" : "−"}${fmt(Math.abs(R.Q - S.forecast))})` : "");
   if (R.shortage) $("#shortage").innerHTML = `<div class="shortage">Domanda senza prezzo non coperta: mancano ${fmt(R.dem.filter(b=>b.p===null).reduce((s,b)=>s+b.q-b.acc,0))} MWh</div>`;
@@ -839,10 +850,10 @@ const FIREBASE_CONFIG = {
   apiKey: "AIzaSyArNmvc5HzcBD7KhNaagwIHssa_4MqVldA",
   authDomain: "borsa-elettrica.firebaseapp.com",
   databaseURL: "https://borsa-elettrica-default-rtdb.europe-west1.firebasedatabase.app",
-     projectId: "borsa-elettrica",
-     storageBucket: "borsa-elettrica.firebasestorage.app",
-     messagingSenderId: "573143942983",
-     appId: "1:573143942983:web:33bab4b6919a26c382ee62"
+  projectId: "borsa-elettrica",
+  storageBucket: "borsa-elettrica.firebasestorage.app",
+  messagingSenderId: "573143942983",
+  appId: "1:573143942983:web:33bab4b6919a26c382ee62"
 };
 const GAME = "mgp";               // nome della partita nel database
 const FIREBASE_VERSION = "10.12.2";
