@@ -94,6 +94,7 @@
   .axis line{stroke:#c9c5ba}
   .grid line{stroke:#ebe8e0}
   .barlbl{font-weight:700;font-size:15px;fill:#fff;pointer-events:none}
+  .namelbl{font-size:13px;font-weight:600;font-style:italic;pointer-events:none}
   .qtylbl{font-family:var(--mono)!important;font-size:12px;font-weight:500;pointer-events:none}
   .pricelbl{font-family:var(--mono)!important;font-size:12px;fill:var(--ink)}
   .legend{display:flex;gap:18px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
@@ -255,7 +256,7 @@
         <button class="btn secondary small" id="addbid">+ Offerta</button>
       </div>
       <table id="bidtable">
-        <thead><tr><th></th><th>Ruolo</th><th>Tipo</th><th class="num">MWh</th><th class="num">€/MWh</th><th>Controllo</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Nome</th><th>Ruolo</th><th>Tipo</th><th class="num">MWh</th><th class="num">€/MWh</th><th>Controllo</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
       <div class="capbar" id="capbar"></div>
@@ -427,7 +428,9 @@ function parse(text){
   const out = [], errs = [];
   text.split(/\r?\n/).forEach((line, li) => {
     if (!line.trim()) return;
-    let lastRole = null;
+    let lastRole = null, who = "";
+    const mm = line.match(/^\s*([^:;|\/\d]{2,40}):\s*(.+)$/);
+    if (mm && !matchRole(mm[1])) { who = mm[1].trim(); line = mm[2]; }
     line.split(/[|\/]/).forEach(seg => {
       if (!seg.trim()) return;
       const toks = seg.split(/[\s;,\t:]+/).filter(Boolean);
@@ -435,8 +438,8 @@ function parse(text){
       for (const t of toks){ if (!/\d/.test(t) && !NOPRICE.test(t)) { rid = matchRole(t); if (rid) break; } }
       rid = rid || lastRole; lastRole = rid;
       const nums = (seg.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-      if (nums.length >= 2 && !NOPRICE.test(seg)) out.push({ role: rid, q: nums[nums.length-2], p: nums[nums.length-1] });
-      else if (nums.length >= 1 && NOPRICE.test(seg)) out.push({ role: rid, q: nums[nums.length-1], p: null });
+      if (nums.length >= 2 && !NOPRICE.test(seg)) out.push({ role: rid, name: who, q: nums[nums.length-2], p: nums[nums.length-1] });
+      else if (nums.length >= 1 && NOPRICE.test(seg)) out.push({ role: rid, name: who, q: nums[nums.length-1], p: null });
       else errs.push(`riga ${li+1}: «${seg.trim()}» senza MWh e prezzo`);
     });
   });
@@ -485,6 +488,7 @@ function renderBids(){
     const side = r ? (r.side === "sell" ? `<span class="side-s">vendita</span>` : `<span class="side-b">acquisto</span>`) : "";
     return `<tr>
       <td><span class="tag" style="background:${r ? r.color : "#9ca3af"}">${r ? esc(r.id) : "?"}</span></td>
+      <td><input type="text" data-i="${i}" data-k="name" value="${esc(b.name || "")}" placeholder="nome" style="width:110px"></td>
       <td><select data-i="${i}" data-k="role"><option value="">—</option>${opts(b.role)}</select></td>
       <td>${side}</td>
       <td class="num"><input type="number" data-i="${i}" data-k="q" value="${b.q}"></td>
@@ -493,13 +497,14 @@ function renderBids(){
       <td><button class="del" data-del="${i}" title="Elimina">×</button></td></tr>`;
   });
   const autos = autoBids().map(b => { const r = role(b.role); return `<tr class="autorow">
-      <td><span class="tag" style="background:${r.color}">${esc(r.id)}</span></td>
+      <td><span class="tag" style="background:${r.color}">${esc(r.id)}</span></td><td><span class="msg mut">computer</span></td>
       <td>${esc(r.name)}</td><td>${r.side === "sell" ? "vendita" : "acquisto"}</td>
       <td class="num">${fmt(b.q)}</td><td class="num">${pTxt(b.p)}</td><td><span class="msg mut">automatica</span></td><td></td></tr>`; });
   $("#bidtable tbody").innerHTML = rows.join("") + autos.join("");
   $("#bidtable tbody").querySelectorAll("select,input").forEach(el => el.onchange = () => {
     const b = S.bids[+el.dataset.i], k = el.dataset.k;
     if (k === "role") b.role = el.value;
+    else if (k === "name") b.name = el.value.trim();
     else if (k === "q") b.q = Number(el.value);
     else { const v = el.value.trim(); b.p = (v === "" || NOPRICE.test(v)) ? null : Number(v.replace(",", ".")); }
     renderBids();
@@ -623,18 +628,21 @@ function buildChart(){
     o.h = Math.max(3, Y(0) - Y(b.p));
     o.rect = el("rect", {x:X(o.xin), y:Y(0), width:Math.max(1, X(b.q)-X(0)-2), height:0, fill:r.color, rx:3}, o.grp);
     const bw = X(b.q) - X(0);
-    o.tall = o.h >= 46;                       // etichette dentro la barra (bianche) o sopra (scure)
+    o.tall = o.h >= 64;                       // etichette dentro la barra (bianche) o sopra (scure)
     const cx = X(o.xin + b.q/2);
     if (o.tall){
       o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:cx, y:Y(0)-24, opacity:0}, o.grp);
       o.ql  = el("text", {class:"qtylbl", "text-anchor":"middle", x:cx, y:Y(0)-8, opacity:0, fill:"#fff"}, o.grp);
       o.pl  = el("text", {class:"pricelbl", "text-anchor":"middle", x:cx, y:Y(b.p)-7, opacity:0}, o.grp);
+      o.nl  = el("text", {class:"namelbl", "text-anchor":"middle", x:cx, y:Y(0)-42, opacity:0, fill:"#fff"}, o.grp);
     } else {
       o.lbl = el("text", {class:"barlbl", "text-anchor":"middle", x:cx, y:Y(b.p)-36, opacity:0, fill:r.color, style:"fill:" + r.color}, o.grp);
       o.ql  = el("text", {class:"qtylbl", "text-anchor":"middle", x:cx, y:Y(b.p)-21, opacity:0, fill:"#1d2330"}, o.grp);
       o.pl  = el("text", {class:"pricelbl", "text-anchor":"middle", x:cx, y:Y(b.p)-7, opacity:0}, o.grp);
+      o.nl  = el("text", {class:"namelbl", "text-anchor":"middle", x:cx, y:Y(b.p)-52, opacity:0, fill:"#1d2330"}, o.grp);
     }
     o.lbl.textContent = r.id;
+    o.nl.textContent = fitText(whoOf(b), bw - 6, 13);
     o.qtxt = q => bw >= 54 ? `${fmt(q)} MWh` : bw >= 22 ? fmt(q) : "";
     o.ql.textContent = o.qtxt(b.q);
     o.pl.textContent = bw >= 34 ? `${fmt(b.p)} €` : fmt(b.p);
@@ -652,12 +660,17 @@ function buildChart(){
     o.lbl.textContent = `${r.id} · ${b.p === null ? "max" : fmt(b.p) + " €"}`;
     o.ql = el("text", {class:"qtylbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:y+20, fill:r.color}, o.grp);
     o.ql.textContent = `${fmt(b.q)} MWh`;
+    o.nl = el("text", {class:"namelbl", "text-anchor":"middle", x:X(o.xin + b.q/2), y:b.p === null ? y+36 : y-28, fill:r.color}, o.grp);
+    o.nl.textContent = fitText(whoOf(b), Math.max(X(b.q) - X(0), 90), 13);
     return o;
   });
 }
+// nome da mostrare: docente per le offerte live, nome del ruolo per quelle automatiche
+function whoOf(b){ const r = role(b.role); return (b.name && b.name.trim()) || (b.auto ? r.name : ""); }
+function fitText(t, px, fontPx){ const max = Math.floor(px / (fontPx * 0.58)); return !t || max < 3 ? "" : t.length <= max ? t : t.slice(0, max - 1) + "…"; }
 function moveDem(o, x){
   o.line.setAttribute("x1", X(x)+2); o.line.setAttribute("x2", X(x+o.b.q)-2);
-  o.lbl.setAttribute("x", X(x + o.b.q/2)); o.ql.setAttribute("x", X(x + o.b.q/2));
+  o.lbl.setAttribute("x", X(x + o.b.q/2)); o.ql.setAttribute("x", X(x + o.b.q/2)); o.nl.setAttribute("x", X(x + o.b.q/2));
 }
 
 const STEPS = [
@@ -678,7 +691,7 @@ async function step0(){
     await wait(i * 140);
     await tween(550, t => { o.rect.setAttribute("height", o.h*t); o.rect.setAttribute("y", Y(0) - o.h*t); });
     if (o.wide) o.lbl.setAttribute("opacity", 1);
-    o.ql.setAttribute("opacity", 1);
+    o.ql.setAttribute("opacity", 1); o.nl.setAttribute("opacity", 1);
     o.pl.setAttribute("opacity", 1);
   }));
 }
@@ -688,7 +701,7 @@ async function step1(){
     const a = o.xin, b = o.b.x0, q = o.b.q;
     await tween(900, t => {
       const x = lerp(a, b, t);
-      o.rect.setAttribute("x", X(x)); [o.lbl, o.ql, o.pl].forEach(t => t.setAttribute("x", X(x + q/2)));
+      o.rect.setAttribute("x", X(x)); [o.lbl, o.ql, o.pl, o.nl].forEach(t => t.setAttribute("x", X(x + q/2)));
     });
   }));
 }
@@ -802,7 +815,8 @@ async function step4(){
 }
 function renderResults(){
   const R = S.result;
-  const row = p => `<tr class="${p.r.human ? "" : "autor"}"><td><span class="tag" style="background:${p.r.color}">${esc(p.r.id)}</span> ${p.r.human ? "" : "<small>auto</small>"}</td>
+  const namesOf = id => [...new Set(R.all.filter(b => b.role === id && b.name).map(b => b.name.trim()))].join(", ");
+  const row = p => `<tr class="${p.r.human ? "" : "autor"}"><td><span class="tag" style="background:${p.r.color}">${esc(p.r.id)}</span> ${p.r.human ? `<small>${esc(namesOf(p.r.id))}</small>` : "<small>auto</small>"}</td>
       <td class="num">${fmt(p.acc)}</td><td class="num">${fmt(p.money)}</td>
       <td class="num" style="color:${p.gain<0?"var(--err)":"inherit"};font-weight:${p.r.human?700:400}">${p.r.side==="buy" && p.r.val===0 && !p.r.human ? "—" : fmt(p.gain)}</td></tr>`;
   const sorted = side => R.players.filter(p => p.r.side === side).sort((a,b) => (b.r.human - a.r.human) || (b.gain - a.gain));
@@ -1006,7 +1020,7 @@ async function writeConfig(base){
 function importLive(){
   const bs = curBids(); if (!bs.length) return;
   S.bids = [];
-  bs.forEach(b => (b.offers || []).forEach(o => S.bids.push({ role: b.role, q: o.q, p: o.p, uid: ++bidSeq })));
+  bs.forEach(b => (b.offers || []).forEach(o => S.bids.push({ role: b.role, name: (b.name || "").trim(), q: o.q, p: o.p, uid: ++bidSeq })));
   renderBids();
   $("#parsemsg").className = "msg ok";
   $("#parsemsg").textContent = `${S.bids.length} offerte importate dai docenti.`;
